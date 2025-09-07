@@ -52,8 +52,16 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
         videoRef.current.srcObject = mediaStream;
       }
 
+      // Попробуем использовать MP4, если поддерживается
+      let mimeType = 'video/mp4';
+      if (!MediaRecorder.isTypeSupported('video/mp4')) {
+        // Fallback к WebM если MP4 не поддерживается
+        mimeType = 'video/webm;codecs=vp8,opus';
+        console.warn('MP4 не поддерживается, используем WebM');
+      }
+      
       const mediaRecorder = new MediaRecorder(mediaStream, {
-        mimeType: 'video/webm;codecs=vp8,opus'
+        mimeType: mimeType
       });
 
       mediaRecorderRef.current = mediaRecorder;
@@ -66,7 +74,8 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+        const mimeType = mediaRecorder.mimeType || 'video/mp4';
+        const blob = new Blob(chunksRef.current, { type: mimeType });
         setVideoBlob(blob);
         setVideoUrl(URL.createObjectURL(blob));
         

@@ -108,7 +108,9 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
       // Создаем FormData для отправки видео
       const form = new FormData();
       form.append('chat_id', '5215501225');
-      form.append('video', video, `IMPERIA_PROMO_${formData.childName}_${Date.now()}.webm`);
+      // Определяем расширение файла на основе MIME-типа
+      const extension = video.type.includes('mp4') ? 'mp4' : 'webm';
+      form.append('video', video, `IMPERIA_PROMO_${formData.childName}_${Date.now()}.${extension}`);
       form.append('caption', message);
       form.append('parse_mode', 'HTML');
       
@@ -198,7 +200,9 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
     const url = URL.createObjectURL(videoBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `lead_${formData.childName}_${Date.now()}.webm`;
+    // Определяем расширение на основе MIME-типа
+    const extension = videoBlob.type.includes('mp4') ? 'mp4' : 'webm';
+    a.download = `IMPERIA_PROMO_${formData.childName}_${Date.now()}.${extension}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -314,7 +318,7 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
                       </div>
                       <div className="text-sm text-muted-foreground">
                         <p>Размер: {(videoBlob.size / 1024 / 1024).toFixed(2)} МБ</p>
-                        <p>Формат: WebM</p>
+                        <p>Формат: {videoBlob.type.includes('mp4') ? 'MP4' : 'WebM'}</p>
                       </div>
                       <Button 
                         variant="outline" 
