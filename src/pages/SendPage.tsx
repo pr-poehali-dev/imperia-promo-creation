@@ -63,7 +63,11 @@ const SendPage = ({ formData, videoBlob, onBack, onComplete }: SendPageProps) =>
     );
   }, []);
 
-  const sendToTelegram = () => {
+  const sendToTelegram = async () => {
+    // Скачиваем видео автоматически
+    downloadVideo();
+    
+    // Копируем сообщение в буфер обмена
     const message = `🎯 НОВЫЙ ЛИД - IMPERIA PROMO
 
 👨‍👩‍👧‍👦 ДАННЫЕ УЧАСТНИКА:
@@ -78,13 +82,25 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
 • Точность: ${location.accuracy.toFixed(0)} м
 • Ссылка: https://maps.google.com/?q=${location.latitude},${location.longitude}` : '• Не определено'}
 
-📹 Видео прикреплено`;
+📹 Видео скачано в папку загрузок
+⬆️ Прикрепите видео в Telegram вручную`;
 
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(message)}`;
-    window.open(telegramUrl, '_blank');
+    try {
+      await navigator.clipboard.writeText(message);
+      alert('✅ Сообщение скопировано в буфер обмена!\n📹 Видео скачивается...\n\nОткройте Telegram, вставьте сообщение и прикрепите скачанный видеофайл.');
+    } catch (err) {
+      console.error('Ошибка копирования:', err);
+      alert('📹 Видео скачивается...\n\n⚠️ Скопируйте сообщение вручную и прикрепите видео в Telegram.');
+    }
+    
+    // Открываем Telegram Web
+    window.open('https://web.telegram.org/', '_blank');
   };
 
-  const sendToWhatsApp = () => {
+  const sendToWhatsApp = async () => {
+    // Скачиваем видео автоматически
+    downloadVideo();
+    
     const message = `🎯 *НОВЫЙ ЛИД - IMPERIA PROMO*
 
 👨‍👩‍👧‍👦 *ДАННЫЕ УЧАСТНИКА:*
@@ -99,10 +115,13 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
 • Точность: ${location.accuracy.toFixed(0)} м
 • Ссылка: https://maps.google.com/?q=${location.latitude},${location.longitude}` : '• Не определено'}
 
-📹 Видео прикреплено`;
+📹 Видео скачано в папку загрузок
+⬆️ Прикрепите видео в WhatsApp вручную`;
 
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
+    
+    alert('✅ Сообщение отправлено в WhatsApp!\n📹 Видео скачивается...\n\n⬆️ Прикрепите скачанный видеофайл в WhatsApp.');
   };
 
   const downloadVideo = () => {
@@ -253,28 +272,54 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
             <CardContent className="p-6">
               <div className="text-center space-y-6">
                 <p className="text-muted-foreground">
-                  Выберите способ отправки данных и видео
+                  Выберите способ отправки данных с видео
                 </p>
                 
-                <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-                  <Button 
-                    onClick={sendToTelegram}
-                    className="flex-1"
-                    size="lg"
-                  >
-                    <Icon name="Send" size={18} className="mr-2" />
-                    Отправить в Telegram
-                  </Button>
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-start gap-2">
+                      <Icon name="Info" size={16} className="text-blue-600 mt-0.5" />
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">Как отправить видео:</p>
+                        <p>1. Видео автоматически скачается</p>
+                        <p>2. Текст скопируется в буфер обмена</p>
+                        <p>3. В мессенджере вставьте текст и прикрепите видеофайл</p>
+                      </div>
+                    </div>
+                  </div>
                   
-                  <Button 
-                    onClick={sendToWhatsApp}
-                    variant="outline"
-                    className="flex-1"
-                    size="lg"
-                  >
-                    <Icon name="MessageCircle" size={18} className="mr-2" />
-                    Отправить в WhatsApp
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
+                    <Button 
+                      onClick={sendToTelegram}
+                      className="flex-1"
+                      size="lg"
+                    >
+                      <Icon name="Send" size={18} className="mr-2" />
+                      Отправить в Telegram
+                    </Button>
+                    
+                    <Button 
+                      onClick={sendToWhatsApp}
+                      variant="outline"
+                      className="flex-1"
+                      size="lg"
+                    >
+                      <Icon name="MessageCircle" size={18} className="mr-2" />
+                      Отправить в WhatsApp
+                    </Button>
+                  </div>
+                  
+                  <div className="text-center pt-2">
+                    <Button 
+                      onClick={downloadVideo}
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                    >
+                      <Icon name="Download" size={16} className="mr-1" />
+                      Скачать видео отдельно
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="pt-6 border-t">
