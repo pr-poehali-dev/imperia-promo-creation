@@ -28,6 +28,7 @@ const SendPage = ({ formData, videoBlob, onBack, onComplete }: SendPageProps) =>
   const [location, setLocation] = useState<LocationData | null>(null);
   const [locationError, setLocationError] = useState<string>('');
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
@@ -64,6 +65,10 @@ const SendPage = ({ formData, videoBlob, onBack, onComplete }: SendPageProps) =>
   }, []);
 
   const sendToTelegram = async () => {
+    if (isSending) return; // Предотвращаем двойную отправку
+    
+    setIsSending(true);
+    
     const message = `🎯 НОВЫЙ ЛИД - IMPERIA PROMO
 
 👨‍👩‍👧‍👦 ДАННЫЕ УЧАСТНИКА:
@@ -78,75 +83,57 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
 • Точность: ${location.accuracy.toFixed(0)} м
 • Карта: https://maps.google.com/?q=${location.latitude},${location.longitude}` : '• Не определено'}
 
-📹 Видео приложено`;
+📹 Видео приложено
+
+✨ Отправлено через IMPERIA PROMO APP`;
 
     try {
-      // Проверяем поддержку Web Share API
-      if (navigator.share && navigator.canShare) {
-        // Создаем File объект из Blob
-        const videoFile = new File([videoBlob], `lead_${formData.childName}_${Date.now()}.webm`, {
-          type: 'video/webm'
-        });
-
-        const shareData = {
-          title: 'Новый лид - IMPERIA PROMO',
-          text: message,
-          files: [videoFile]
-        };
-
-        // Проверяем, можно ли поделиться этим контентом
-        if (navigator.canShare(shareData)) {
-          await navigator.share(shareData);
-          alert('✅ Видео успешно отправлено!');
-          return;
-        }
-      }
-
-      // Fallback: отправка через Telegram Bot API
+      // Отправка только через Telegram Bot API
       await sendViaTelegramBot(message, videoBlob);
       
     } catch (error) {
-      console.error('Ошибка отправки:', error);
-      
-      // Если ничего не работает, пробуем Telegram Bot API
-      try {
-        await sendViaTelegramBot(message, videoBlob);
-      } catch (botError) {
-        console.error('Ошибка Telegram Bot API:', botError);
-        
-        // Последний fallback - открываем Telegram с текстом
-        const telegramUrl = `tg://msg?text=${encodeURIComponent(message + '\n\n⚠️ Видео нужно прикрепить вручную')}`;
-        window.open(telegramUrl, '_blank');
-        
-        // Автоматически скачиваем видео
-        downloadVideo();
-        
-        alert('⚠️ Не удалось отправить видео автоматически.\n📹 Видео скачивается...\n\nОткройте Telegram и прикрепите видео вручную.');
-      }
+      console.error('Ошибка отправки через Telegram Bot API:', error);
+      alert('⚠️ Ошибка отправки в Telegram.\n\nПожалуйста, попробуйте ещё раз или обратитесь к администратору.');
+    } finally {
+      setIsSending(false);
     }
   };
 
-  // Отправка через Telegram Bot API 
+  // Отправка через Telegram Bot API
   const sendViaTelegramBot = async (message: string, video: Blob) => {
-    // Создаем FormData для отправки видео
-    const form = new FormData();
-    form.append('video', video, `lead_${formData.childName}_${Date.now()}.webm`);
-    form.append('caption', message);
+    // Показываем статус отправки
+    console.log('🚀 Отправляем видео в Telegram...');
     
-    // Используем публичный тестовый бот для демонстрации
-    const BOT_TOKEN = '6234567890:AAEzQjE-example-bot-token-here';
-    const CHAT_ID = '@imperia_promo_channel'; // или ID канала/чата
-    
-    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
-      method: 'POST',
-      body: form
-    });
+    try {
+      // Создаем FormData для отправки видео
+      const form = new FormData();
+      form.append('chat_id', '5215501225');
+      form.append('video', video, `IMPERIA_PROMO_${formData.childName}_${Date.now()}.webm`);
+      form.append('caption', message);
+      form.append('parse_mode', 'HTML');
+      
+      // Реальные данные бота
+      const BOT_TOKEN = '8286818285:AAGqkSsTlsbKCT1guKYoDpkL_OcldAVyuSE';
+      
+      const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
+        method: 'POST',
+        body: form
+      });
 
-    if (!response.ok) {
-      throw new Error('Ошибка отправки через Telegram Bot API');
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('Telegram API Error:', result);
+        throw new Error(`Telegram API Error: ${result.description || 'Неизвестная ошибка'}`);
+      }
+
+      console.log('Успешная отправка:', result);
+      alert('✅ Видео успешно отправлено в Telegram!\n\n🎯 IMPERIA PROMO - Лид зарегистрирован');
+      
+    } catch (error) {
+      console.error('Ошибка отправки:', error);
+      throw error;
     }
-
-    alert('✅ Видео успешно отправлено в Telegram!');
   };
 
   const sendToWhatsApp = async () => {
@@ -363,10 +350,10 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
                     <div className="flex items-start gap-2">
                       <Icon name="CheckCircle" size={16} className="text-green-600 mt-0.5" />
                       <div className="text-sm text-green-800">
-                        <p className="font-medium mb-1">Прямая отправка видео:</p>
-                        <p>• Видео отправляется напрямую из браузера</p>
-                        <p>• Никаких скачиваний не требуется</p>
-                        <p>• Текст и видео отправляются одновременно</p>
+                        <p className="font-medium mb-1">🤖 Отправка через Telegram Bot:</p>
+                        <p>• Прямая отправка в чат клиента</p>
+                        <p>• Видео + данные + геолокация</p>
+                        <p>• Мгновенная доставка одним кликом</p>
                       </div>
                     </div>
                   </div>
@@ -374,11 +361,21 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
                   <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
                     <Button 
                       onClick={sendToTelegram}
+                      disabled={isSending}
                       className="flex-1"
                       size="lg"
                     >
-                      <Icon name="Send" size={18} className="mr-2" />
-                      Отправить в Telegram
+                      {isSending ? (
+                        <>
+                          <Icon name="Loader2" size={18} className="mr-2 animate-spin" />
+                          Отправляем...
+                        </>
+                      ) : (
+                        <>
+                          <Icon name="Send" size={18} className="mr-2" />
+                          Отправить в Telegram
+                        </>
+                      )}
                     </Button>
                     
                     <Button 
