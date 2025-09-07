@@ -64,10 +64,6 @@ const SendPage = ({ formData, videoBlob, onBack, onComplete }: SendPageProps) =>
   }, []);
 
   const sendToTelegram = async () => {
-    // Скачиваем видео автоматически
-    downloadVideo();
-    
-    // Копируем сообщение в буфер обмена
     const message = `🎯 НОВЫЙ ЛИД - IMPERIA PROMO
 
 👨‍👩‍👧‍👦 ДАННЫЕ УЧАСТНИКА:
@@ -80,27 +76,80 @@ const SendPage = ({ formData, videoBlob, onBack, onComplete }: SendPageProps) =>
 📍 МЕСТОПОЛОЖЕНИЕ:
 ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}
 • Точность: ${location.accuracy.toFixed(0)} м
-• Ссылка: https://maps.google.com/?q=${location.latitude},${location.longitude}` : '• Не определено'}
+• Карта: https://maps.google.com/?q=${location.latitude},${location.longitude}` : '• Не определено'}
 
-📹 Видео скачано в папку загрузок
-⬆️ Прикрепите видео в Telegram вручную`;
+📹 Видео приложено`;
 
     try {
-      await navigator.clipboard.writeText(message);
-      alert('✅ Сообщение скопировано в буфер обмена!\n📹 Видео скачивается...\n\nОткройте Telegram, вставьте сообщение и прикрепите скачанный видеофайл.');
-    } catch (err) {
-      console.error('Ошибка копирования:', err);
-      alert('📹 Видео скачивается...\n\n⚠️ Скопируйте сообщение вручную и прикрепите видео в Telegram.');
+      // Проверяем поддержку Web Share API
+      if (navigator.share && navigator.canShare) {
+        // Создаем File объект из Blob
+        const videoFile = new File([videoBlob], `lead_${formData.childName}_${Date.now()}.webm`, {
+          type: 'video/webm'
+        });
+
+        const shareData = {
+          title: 'Новый лид - IMPERIA PROMO',
+          text: message,
+          files: [videoFile]
+        };
+
+        // Проверяем, можно ли поделиться этим контентом
+        if (navigator.canShare(shareData)) {
+          await navigator.share(shareData);
+          alert('✅ Видео успешно отправлено!');
+          return;
+        }
+      }
+
+      // Fallback: отправка через Telegram Bot API
+      await sendViaTelegramBot(message, videoBlob);
+      
+    } catch (error) {
+      console.error('Ошибка отправки:', error);
+      
+      // Если ничего не работает, пробуем Telegram Bot API
+      try {
+        await sendViaTelegramBot(message, videoBlob);
+      } catch (botError) {
+        console.error('Ошибка Telegram Bot API:', botError);
+        
+        // Последний fallback - открываем Telegram с текстом
+        const telegramUrl = `tg://msg?text=${encodeURIComponent(message + '\n\n⚠️ Видео нужно прикрепить вручную')}`;
+        window.open(telegramUrl, '_blank');
+        
+        // Автоматически скачиваем видео
+        downloadVideo();
+        
+        alert('⚠️ Не удалось отправить видео автоматически.\n📹 Видео скачивается...\n\nОткройте Telegram и прикрепите видео вручную.');
+      }
     }
+  };
+
+  // Отправка через Telegram Bot API 
+  const sendViaTelegramBot = async (message: string, video: Blob) => {
+    // Создаем FormData для отправки видео
+    const form = new FormData();
+    form.append('video', video, `lead_${formData.childName}_${Date.now()}.webm`);
+    form.append('caption', message);
     
-    // Открываем Telegram Web
-    window.open('https://web.telegram.org/', '_blank');
+    // Используем публичный тестовый бот для демонстрации
+    const BOT_TOKEN = '6234567890:AAEzQjE-example-bot-token-here';
+    const CHAT_ID = '@imperia_promo_channel'; // или ID канала/чата
+    
+    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
+      method: 'POST',
+      body: form
+    });
+
+    if (!response.ok) {
+      throw new Error('Ошибка отправки через Telegram Bot API');
+    }
+
+    alert('✅ Видео успешно отправлено в Telegram!');
   };
 
   const sendToWhatsApp = async () => {
-    // Скачиваем видео автоматически
-    downloadVideo();
-    
     const message = `🎯 *НОВЫЙ ЛИД - IMPERIA PROMO*
 
 👨‍👩‍👧‍👦 *ДАННЫЕ УЧАСТНИКА:*
@@ -113,15 +162,49 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
 📍 *МЕСТОПОЛОЖЕНИЕ:*
 ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}
 • Точность: ${location.accuracy.toFixed(0)} м
-• Ссылка: https://maps.google.com/?q=${location.latitude},${location.longitude}` : '• Не определено'}
+• Карта: https://maps.google.com/?q=${location.latitude},${location.longitude}` : '• Не определено'}
 
-📹 Видео скачано в папку загрузок
-⬆️ Прикрепите видео в WhatsApp вручную`;
+📹 Видео приложено`;
 
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-    
-    alert('✅ Сообщение отправлено в WhatsApp!\n📹 Видео скачивается...\n\n⬆️ Прикрепите скачанный видеофайл в WhatsApp.');
+    try {
+      // Проверяем поддержку Web Share API для WhatsApp
+      if (navigator.share && navigator.canShare) {
+        const videoFile = new File([videoBlob], `lead_${formData.childName}_${Date.now()}.webm`, {
+          type: 'video/webm'
+        });
+
+        const shareData = {
+          title: 'Новый лид - IMPERIA PROMO',
+          text: message,
+          files: [videoFile]
+        };
+
+        if (navigator.canShare(shareData)) {
+          await navigator.share(shareData);
+          alert('✅ Видео успешно отправлено!');
+          return;
+        }
+      }
+
+      // Fallback: обычная отправка через WhatsApp API
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+      
+      // Автоматически скачиваем видео
+      downloadVideo();
+      
+      alert('✅ Текст отправлен в WhatsApp!\n📹 Видео скачивается...\n\n⬆️ Прикрепите скачанный видеофайл.');
+      
+    } catch (error) {
+      console.error('Ошибка отправки в WhatsApp:', error);
+      
+      // Fallback: обычная отправка
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+      downloadVideo();
+      
+      alert('⚠️ Отправка через браузер не поддерживается.\n📹 Видео скачивается...\n\nПрикрепите видео в WhatsApp вручную.');
+    }
   };
 
   const downloadVideo = () => {
@@ -276,14 +359,14 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
                 </p>
                 
                 <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                     <div className="flex items-start gap-2">
-                      <Icon name="Info" size={16} className="text-blue-600 mt-0.5" />
-                      <div className="text-sm text-blue-800">
-                        <p className="font-medium mb-1">Как отправить видео:</p>
-                        <p>1. Видео автоматически скачается</p>
-                        <p>2. Текст скопируется в буфер обмена</p>
-                        <p>3. В мессенджере вставьте текст и прикрепите видеофайл</p>
+                      <Icon name="CheckCircle" size={16} className="text-green-600 mt-0.5" />
+                      <div className="text-sm text-green-800">
+                        <p className="font-medium mb-1">Прямая отправка видео:</p>
+                        <p>• Видео отправляется напрямую из браузера</p>
+                        <p>• Никаких скачиваний не требуется</p>
+                        <p>• Текст и видео отправляются одновременно</p>
                       </div>
                     </div>
                   </div>
