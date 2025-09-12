@@ -38,24 +38,47 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
 
   const startRecording = async () => {
     try {
-      // Более совместимые настройки для iOS
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      // Оптимизированные настройки для iOS без PiP эффекта
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      const constraints = {
         video: {
-          width: { ideal: 1280, max: 1280 },
-          height: { ideal: 720, max: 720 },
-          frameRate: { ideal: 30, max: 30 },
-          facingMode: 'environment' // убираем exact для совместимости
+          width: { ideal: 640, min: 320, max: 1280 },
+          height: { ideal: 480, min: 240, max: 720 },
+          frameRate: { ideal: 30, min: 15, max: 30 },
+          facingMode: 'environment',
+          // Особые настройки для iOS
+          ...(isIOS && {
+            aspectRatio: { ideal: 16/9 }, // 16:9 для iOS
+            resizeMode: 'crop-and-scale'
+          })
         },
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
+          autoGainControl: true,
           sampleRate: 44100
         }
-      });
+      };
+      
+      console.log('Запрашиваем камеру с настройками:', constraints);
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
 
       setStream(mediaStream);
       if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
+        const video = videoRef.current;
+        video.srcObject = mediaStream;
+        
+        // Отключаем Picture-in-Picture и другие iOS эффекты
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('webkit-playsinline', 'true');
+        video.muted = true;
+        video.autoplay = true;
+        
+        // Отключаем PiP режим
+        if ('disablePictureInPicture' in video) {
+          (video as any).disablePictureInPicture = true;
+        }
       }
 
       // Оптимизированный выбор формата для iOS и Telegram
@@ -273,7 +296,13 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
                       autoPlay
                       muted
                       playsInline
+                      webkit-playsinline="true"
+                      disablePictureInPicture
+                      controlsList="nodownload nofullscreen noremoteplayback"
                       className="w-full h-full object-cover"
+                      style={{
+                        objectFit: 'cover' // убираем отзеркаливание
+                      }}
                     />
                   ) : (
                     <video
