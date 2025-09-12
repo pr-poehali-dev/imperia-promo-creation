@@ -131,11 +131,6 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
       console.log('Успешная отправка:', result);
       alert('✅ Видео успешно отправлено в Telegram!\n\n🎯 IMPERIA PROMO - Лид зарегистрирован');
       
-      // Автоматический переход на главную страницу
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
-      
     } catch (error) {
       console.error('Ошибка отправки:', error);
       throw error;
@@ -217,7 +212,14 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="text-center space-y-8 max-w-md mx-auto">
         
-        <h1 className="text-2xl font-bold">IMPERIA PROMO</h1>
+        <div className="space-y-4">
+          <Button onClick={onBack} variant="ghost" size="sm" className="mb-8">
+            <Icon name="ArrowLeft" size={20} className="mr-2" />
+            Назад
+          </Button>
+          
+          <h1 className="text-2xl font-bold">IMPERIA PROMO</h1>
+        </div>
 
         <Button 
           onClick={sendToTelegram}
