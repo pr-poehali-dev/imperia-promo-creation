@@ -128,16 +128,9 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
       {/* Header */}
       <div className="bg-primary text-primary-foreground py-6">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between">
-            <Button onClick={onBack} variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/20">
-              <Icon name="ArrowLeft" size={20} className="mr-2" />
-              Назад
-            </Button>
-            <div className="text-center flex-1">
-              <h1 className="text-2xl font-bold">IMPERIA PROMO</h1>
-              <p className="text-sm opacity-90">Заполните анкету и запишите видео</p>
-            </div>
-            <div className="w-20"></div>
+          <div className="text-center">
+            <h1 className="text-2xl font-bold">IMPERIA PROMO</h1>
+            <p className="text-sm opacity-90">Заполните анкету и запишите видео</p>
           </div>
         </div>
       </div>
