@@ -38,13 +38,19 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
 
   const startRecording = async () => {
     try {
+      // Более совместимые настройки для iOS
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: { exact: 'environment' }
+          width: { ideal: 1280, max: 1280 },
+          height: { ideal: 720, max: 720 },
+          frameRate: { ideal: 30, max: 30 },
+          facingMode: 'environment' // убираем exact для совместимости
         },
-        audio: true
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        }
       });
 
       setStream(mediaStream);
@@ -52,16 +58,35 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
         videoRef.current.srcObject = mediaStream;
       }
 
-      // Попробуем использовать MP4, если поддерживается
-      let mimeType = 'video/mp4';
-      if (!MediaRecorder.isTypeSupported('video/mp4')) {
-        // Fallback к WebM если MP4 не поддерживается
-        mimeType = 'video/webm;codecs=vp8,opus';
-        console.warn('MP4 не поддерживается, используем WebM');
+      // Оптимизированный выбор формата для iOS и Telegram
+      let mimeType = '';
+      
+      // Проверяем поддерживаемые форматы в порядке приоритета для Telegram
+      const supportedTypes = [
+        'video/mp4; codecs="avc1.424028, mp4a.40.2"', // H.264 + AAC - лучший для Telegram
+        'video/webm; codecs="vp9, opus"',              // VP9 + Opus  
+        'video/webm; codecs="vp8, opus"',              // VP8 + Opus
+        'video/mp4',                                    // Базовый MP4
+        'video/webm'                                    // Базовый WebM
+      ];
+      
+      for (const type of supportedTypes) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          mimeType = type;
+          break;
+        }
       }
       
+      if (!mimeType) {
+        mimeType = 'video/webm'; // последний fallback
+      }
+      
+      console.log('Используемый MIME тип:', mimeType);
+      
       const mediaRecorder = new MediaRecorder(mediaStream, {
-        mimeType: mimeType
+        mimeType: mimeType,
+        videoBitsPerSecond: 2500000, // 2.5 Mbps - оптимально для Telegram
+        audioBitsPerSecond: 128000   // 128 kbps - хорошее качество звука
       });
 
       mediaRecorderRef.current = mediaRecorder;
@@ -74,8 +99,15 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
       };
 
       mediaRecorder.onstop = () => {
-        const mimeType = mediaRecorder.mimeType || 'video/mp4';
-        const blob = new Blob(chunksRef.current, { type: mimeType });
+        const recordedMimeType = mediaRecorder.mimeType || mimeType;
+        const blob = new Blob(chunksRef.current, { type: recordedMimeType });
+        
+        console.log('Записанное видео:', {
+          size: blob.size,
+          type: blob.type,
+          duration: 'неизвестно'
+        });
+        
         setVideoBlob(blob);
         setVideoUrl(URL.createObjectURL(blob));
         
@@ -83,7 +115,8 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
         setStream(null);
       };
 
-      mediaRecorder.start();
+      // Начинаем запись с интервалом для лучшей совместимости
+      mediaRecorder.start(1000); // записываем чанки каждую секунду
       setIsRecording(true);
     } catch (error) {
       console.error('Ошибка начала записи:', error);

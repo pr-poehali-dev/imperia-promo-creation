@@ -101,17 +101,50 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
   // Отправка через Telegram Bot API
   const sendViaTelegramBot = async (message: string, video: Blob) => {
     // Показываем статус отправки
-    console.log('🚀 Отправляем видео в Telegram...');
+    console.log('🚀 Отправляем видео в Telegram...', {
+      videoSize: video.size,
+      videoType: video.type,
+      parentName: formData.childName
+    });
     
     try {
+      // Проверяем размер файла (Telegram лимит 50MB)
+      const maxSize = 50 * 1024 * 1024; // 50MB в байтах
+      if (video.size > maxSize) {
+        throw new Error(`Файл слишком большой (${(video.size / 1024 / 1024).toFixed(1)}MB). Максимум 50MB.`);
+      }
+      
       // Создаем FormData для отправки видео
       const form = new FormData();
       form.append('chat_id', '5215501225');
-      // Определяем расширение файла на основе MIME-типа
-      const extension = video.type.includes('mp4') ? 'mp4' : 'webm';
-      form.append('video', video, `IMPERIA_PROMO_${formData.childName}_${Date.now()}.${extension}`);
+      
+      // Улучшенное определение расширения и MIME типа
+      let extension = 'mp4';
+      let mimeType = video.type;
+      
+      if (video.type.includes('webm')) {
+        extension = 'webm';
+      } else if (video.type.includes('mov') || video.type.includes('quicktime')) {
+        extension = 'mov';
+        mimeType = 'video/mp4'; // Конвертируем MOV в MP4 для Telegram
+      } else if (video.type.includes('mp4') || !video.type) {
+        extension = 'mp4';
+        mimeType = 'video/mp4';
+      }
+      
+      // Создаем новый Blob с правильным MIME типом если нужно
+      const videoBlob = mimeType !== video.type ? new Blob([video], { type: mimeType }) : video;
+      
+      const fileName = `IMPERIA_PROMO_${formData.childName}_${Date.now()}.${extension}`;
+      form.append('video', videoBlob, fileName);
       form.append('caption', message);
       form.append('parse_mode', 'HTML');
+      
+      console.log('Отправляем файл:', {
+        name: fileName,
+        size: videoBlob.size,
+        type: videoBlob.type
+      });
       
       // Реальные данные бота
       const BOT_TOKEN = '8286818285:AAGqkSsTlsbKCT1guKYoDpkL_OcldAVyuSE';
