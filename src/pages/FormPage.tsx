@@ -43,8 +43,8 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
       
       const constraints = {
         video: {
-          width: { ideal: 640, min: 320, max: 1280 },
-          height: { ideal: 480, min: 240, max: 720 },
+          width: { ideal: 800, min: 320, max: 800 },
+          height: { ideal: 450, min: 240, max: 450 },
           frameRate: { ideal: 30, min: 15, max: 30 },
           facingMode: 'environment',
           // Особые настройки для iOS
@@ -284,7 +284,7 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
             <CardHeader className="bg-muted/30">
               <CardTitle className="flex items-center gap-2">
                 <Icon name="Video" size={24} />
-                Запись видео (480p)
+                Запись видео (450p)
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">

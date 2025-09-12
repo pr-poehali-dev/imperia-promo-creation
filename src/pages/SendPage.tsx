@@ -108,11 +108,9 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
     });
     
     try {
-      // Проверяем размер файла (Telegram лимит 50MB)
-      const maxSize = 50 * 1024 * 1024; // 50MB в байтах
-      if (video.size > maxSize) {
-        throw new Error(`Файл слишком большой (${(video.size / 1024 / 1024).toFixed(1)}MB). Максимум 50MB.`);
-      }
+      // Логируем размер файла (лимит по весу убран)
+      console.log(`Размер видео: ${(video.size / 1024 / 1024).toFixed(1)}MB`);
+      // Лимит по размеру убран по запросу
       
       // Создаем FormData для отправки видео
       const form = new FormData();
