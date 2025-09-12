@@ -93,9 +93,28 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
       // Отправка только через Telegram Bot API
       await sendViaTelegramBot(message, videoBlob, type);
       
-    } catch (error) {
-      console.error('Ошибка отправки через Telegram Bot API:', error);
-      alert('⚠️ Ошибка отправки в Telegram.\n\nПожалуйста, попробуйте ещё раз или обратитесь к администратору.');
+    } catch (error: any) {
+      console.error('🚫 Детальная ошибка отправки:', {
+        message: error?.message || 'Неизвестная ошибка',
+        stack: error?.stack,
+        type: error?.name
+      });
+      
+      let userMessage = '⚠️ Ошибка отправки в Telegram.';
+      
+      if (error?.message) {
+        if (error.message.includes('файл') || error.message.includes('file') || error.message.includes('size')) {
+          userMessage = '⚠️ Файл слишком большой для Telegram.\nПопробуйте записать более короткое видео.';
+        } else if (error.message.includes('токен') || error.message.includes('token')) {
+          userMessage = '⚠️ Проблема с настройками бота.\nОбратитесь к администратору.';
+        } else if (error.message.includes('сеть') || error.message.includes('network')) {
+          userMessage = '⚠️ Проблема с интернет-соединением.\nПроверьте подключение и попробуйте снова.';
+        } else {
+          userMessage = `⚠️ ${error.message}`;
+        }
+      }
+      
+      alert(`${userMessage}\n\nПожалуйста, попробуйте ещё раз или обратитесь к администратору.`);
     } finally {
       setIsSending(false);
     }
@@ -153,19 +172,52 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
         ? '8286818285:AAGqkSsTlsbKCT1guKYoDpkL_OcldAVyuSE'
         : '8244106990:AAEVuBsj6sQDJ-a-qfwFRk0GMRHbyrGVuWc';
       
+      console.log('🔗 Отправляем на URL:', `https://api.telegram.org/bot${BOT_TOKEN.substring(0, 10)}***/sendVideo`);
+      
       const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
         method: 'POST',
-        body: form
+        body: form,
+        // Добавляем таймаут для больших файлов
+        signal: AbortSignal.timeout(60000) // 60 секунд
       });
 
-      const result = await response.json();
+      console.log('📶 HTTP Status:', response.status, response.statusText);
+      
+      let result;
+      try {
+        result = await response.json();
+      } catch (parseError) {
+        console.error('Ошибка парсинга JSON:', parseError);
+        throw new Error('Неверный ответ от Telegram API');
+      }
+      
+      console.log('📝 Ответ от Telegram:', result);
 
       if (!response.ok) {
-        console.error('Telegram API Error:', result);
-        throw new Error(`Telegram API Error: ${result.description || 'Неизвестная ошибка'}`);
+        console.error('❌ Telegram API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: result
+        });
+        
+        let errorMessage = `Ошибка ${response.status}`;
+        
+        if (result?.description) {
+          if (result.description.includes('file size')) {
+            errorMessage = 'Файл слишком большой для Telegram';
+          } else if (result.description.includes('bot token')) {
+            errorMessage = 'Неверный токен бота';
+          } else if (result.description.includes('chat not found')) {
+            errorMessage = 'Не найден чат или бот';
+          } else {
+            errorMessage = result.description;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
-      console.log('Успешная отправка:', result);
+      console.log('✅ Успешная отправка:', result);
       alert(`✅ Видео (${type}) успешно отправлено в Telegram!\n\n🎯 IMPERIA PROMO - Данные отправлены`);
       
       // Автоматический переход на главную страницу
@@ -173,8 +225,43 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
         onComplete();
       }, 2000);
       
-    } catch (error) {
-      console.error('Ошибка отправки:', error);
+    } catch (error: any) {
+      console.error('🚫 Ошибка отправки:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      
+      // Попытка отправить как документ, если видео не поддерживается
+      if (error.message?.includes('Файл') || error.message?.includes('file')) {
+        try {
+          console.log('📄 Попытка отправить как документ...');
+          
+          const docForm = new FormData();
+          docForm.append('chat_id', '5215501225');
+          docForm.append('document', video, `${fileName}`);
+          docForm.append('caption', message);
+          
+          const BOT_TOKEN = type === 'запись' 
+            ? '8286818285:AAGqkSsTlsbKCT1guKYoDpkL_OcldAVyuSE'
+            : '8244106990:AAEVuBsj6sQDJ-a-qfwFRk0GMRHbyrGVuWc';
+            
+          const docResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+            method: 'POST',
+            body: docForm
+          });
+          
+          if (docResponse.ok) {
+            console.log('✅ Отправлено как документ');
+            alert(`✅ Видео (${type}) отправлено как документ!`);
+            setTimeout(() => onComplete(), 2000);
+            return;
+          }
+        } catch (docError) {
+          console.error('Ошибка отправки документа:', docError);
+        }
+      }
+      
       throw error;
     }
   };
