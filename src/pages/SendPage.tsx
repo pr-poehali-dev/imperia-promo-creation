@@ -63,15 +63,12 @@ const SendPage = ({ formData, videoBlob, onBack, onComplete }: SendPageProps) =>
     );
   }, []);
 
-  const sendToTelegram = async (type: 'запись' | 'брак') => {
+  const sendToTelegram = async () => {
     if (isSending) return; // Предотвращаем двойную отправку
     
     setIsSending(true);
     
-    const statusIcon = type === 'запись' ? '✅' : '❌';
-    const statusText = type === 'запись' ? 'ЗАПИСЬ' : 'БРАК';
-    
-    const message = `${statusIcon} ${statusText} - IMPERIA PROMO
+    const message = `🎯 НОВЫЙ ЛИД - IMPERIA PROMO
 
 👨‍👩‍👧‍👦 ДАННЫЕ УЧАСТНИКА:
 • Родитель: ${formData.parentName}
@@ -91,43 +88,23 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
 
     try {
       // Отправка только через Telegram Bot API
-      await sendViaTelegramBot(message, videoBlob, type);
+      await sendViaTelegramBot(message, videoBlob);
       
-    } catch (error: any) {
-      console.error('🚫 Детальная ошибка отправки:', {
-        message: error?.message || 'Неизвестная ошибка',
-        stack: error?.stack,
-        type: error?.name
-      });
-      
-      let userMessage = '⚠️ Ошибка отправки в Telegram.';
-      
-      if (error?.message) {
-        if (error.message.includes('файл') || error.message.includes('file') || error.message.includes('size')) {
-          userMessage = '⚠️ Файл слишком большой для Telegram.\nПопробуйте записать более короткое видео.';
-        } else if (error.message.includes('токен') || error.message.includes('token')) {
-          userMessage = '⚠️ Проблема с настройками бота.\nОбратитесь к администратору.';
-        } else if (error.message.includes('сеть') || error.message.includes('network')) {
-          userMessage = '⚠️ Проблема с интернет-соединением.\nПроверьте подключение и попробуйте снова.';
-        } else {
-          userMessage = `⚠️ ${error.message}`;
-        }
-      }
-      
-      alert(`${userMessage}\n\nПожалуйста, попробуйте ещё раз или обратитесь к администратору.`);
+    } catch (error) {
+      console.error('Ошибка отправки через Telegram Bot API:', error);
+      alert('⚠️ Ошибка отправки в Telegram.\n\nПожалуйста, попробуйте ещё раз или обратитесь к администратору.');
     } finally {
       setIsSending(false);
     }
   };
 
   // Отправка через Telegram Bot API
-  const sendViaTelegramBot = async (message: string, video: Blob, type: 'запись' | 'брак') => {
+  const sendViaTelegramBot = async (message: string, video: Blob) => {
     // Показываем статус отправки
     console.log('🚀 Отправляем видео в Telegram...', {
       videoSize: video.size,
       videoType: video.type,
-      parentName: formData.childName,
-      type: type
+      parentName: formData.childName
     });
     
     try {
@@ -167,101 +144,31 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
         type: videoBlob.type
       });
       
-      // Токены для разных типов отправки
-      const BOT_TOKEN = type === 'запись' 
-        ? '8286818285:AAGqkSsTlsbKCT1guKYoDpkL_OcldAVyuSE'
-        : '8244106990:AAEVuBsj6sQDJ-a-qfwFRk0GMRHbyrGVuWc';
-      
-      console.log('🔗 Отправляем на URL:', `https://api.telegram.org/bot${BOT_TOKEN.substring(0, 10)}***/sendVideo`);
+      // Реальные данные бота
+      const BOT_TOKEN = '8286818285:AAGqkSsTlsbKCT1guKYoDpkL_OcldAVyuSE';
       
       const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
         method: 'POST',
-        body: form,
-        // Добавляем таймаут для больших файлов
-        signal: AbortSignal.timeout(60000) // 60 секунд
+        body: form
       });
 
-      console.log('📶 HTTP Status:', response.status, response.statusText);
-      
-      let result;
-      try {
-        result = await response.json();
-      } catch (parseError) {
-        console.error('Ошибка парсинга JSON:', parseError);
-        throw new Error('Неверный ответ от Telegram API');
-      }
-      
-      console.log('📝 Ответ от Telegram:', result);
+      const result = await response.json();
 
       if (!response.ok) {
-        console.error('❌ Telegram API Error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: result
-        });
-        
-        let errorMessage = `Ошибка ${response.status}`;
-        
-        if (result?.description) {
-          if (result.description.includes('file size')) {
-            errorMessage = 'Файл слишком большой для Telegram';
-          } else if (result.description.includes('bot token')) {
-            errorMessage = 'Неверный токен бота';
-          } else if (result.description.includes('chat not found')) {
-            errorMessage = 'Не найден чат или бот';
-          } else {
-            errorMessage = result.description;
-          }
-        }
-        
-        throw new Error(errorMessage);
+        console.error('Telegram API Error:', result);
+        throw new Error(`Telegram API Error: ${result.description || 'Неизвестная ошибка'}`);
       }
 
-      console.log('✅ Успешная отправка:', result);
-      alert(`✅ Видео (${type}) успешно отправлено в Telegram!\n\n🎯 IMPERIA PROMO - Данные отправлены`);
+      console.log('Успешная отправка:', result);
+      alert('✅ Видео успешно отправлено в Telegram!\n\n🎯 IMPERIA PROMO - Лид зарегистрирован');
       
       // Автоматический переход на главную страницу
       setTimeout(() => {
         onComplete();
       }, 2000);
       
-    } catch (error: any) {
-      console.error('🚫 Ошибка отправки:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      
-      // Попытка отправить как документ, если видео не поддерживается
-      if (error.message?.includes('Файл') || error.message?.includes('file')) {
-        try {
-          console.log('📄 Попытка отправить как документ...');
-          
-          const docForm = new FormData();
-          docForm.append('chat_id', '5215501225');
-          docForm.append('document', video, `${fileName}`);
-          docForm.append('caption', message);
-          
-          const BOT_TOKEN = type === 'запись' 
-            ? '8286818285:AAGqkSsTlsbKCT1guKYoDpkL_OcldAVyuSE'
-            : '8244106990:AAEVuBsj6sQDJ-a-qfwFRk0GMRHbyrGVuWc';
-            
-          const docResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
-            method: 'POST',
-            body: docForm
-          });
-          
-          if (docResponse.ok) {
-            console.log('✅ Отправлено как документ');
-            alert(`✅ Видео (${type}) отправлено как документ!`);
-            setTimeout(() => onComplete(), 2000);
-            return;
-          }
-        } catch (docError) {
-          console.error('Ошибка отправки документа:', docError);
-        }
-      }
-      
+    } catch (error) {
+      console.error('Ошибка отправки:', error);
       throw error;
     }
   };
@@ -343,46 +250,24 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
         
         <h1 className="text-2xl font-bold">IMPERIA PROMO</h1>
 
-        <div className="space-y-4 w-full">
-          <Button 
-            onClick={() => sendToTelegram('запись')}
-            disabled={isSending}
-            size="lg"
-            className="w-full text-lg px-8 py-6 h-auto bg-green-600 hover:bg-green-700"
-          >
-            {isSending ? (
-              <>
-                <Icon name="Loader2" size={20} className="mr-2 animate-spin" />
-                Отправляем...
-              </>
-            ) : (
-              <>
-                <Icon name="CheckCircle" size={20} className="mr-2" />
-                Запись
-              </>
-            )}
-          </Button>
-
-          <Button 
-            onClick={() => sendToTelegram('брак')}
-            disabled={isSending}
-            size="lg"
-            variant="destructive"
-            className="w-full text-lg px-8 py-6 h-auto"
-          >
-            {isSending ? (
-              <>
-                <Icon name="Loader2" size={20} className="mr-2 animate-spin" />
-                Отправляем...
-              </>
-            ) : (
-              <>
-                <Icon name="XCircle" size={20} className="mr-2" />
-                Брак
-              </>
-            )}
-          </Button>
-        </div>
+        <Button 
+          onClick={sendToTelegram}
+          disabled={isSending}
+          size="lg"
+          className="w-full text-lg px-8 py-6 h-auto"
+        >
+          {isSending ? (
+            <>
+              <Icon name="Loader2" size={20} className="mr-2 animate-spin" />
+              Отправляем...
+            </>
+          ) : (
+            <>
+              <Icon name="Send" size={20} className="mr-2" />
+              Отправить в Telegram
+            </>
+          )}
+        </Button>
 
       </div>
     </div>
