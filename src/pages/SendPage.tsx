@@ -63,7 +63,7 @@ const SendPage = ({ formData, videoBlob, onBack, onComplete }: SendPageProps) =>
     );
   }, []);
 
-  const sendToTelegram = async (type: 'запись' | 'задача' | 'брак' = 'запись') => {
+  const sendToTelegram = async () => {
     if (isSending) return; // Предотвращаем двойную отправку
     
     setIsSending(true);
@@ -88,7 +88,7 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
 
     try {
       // Отправка только через Telegram Bot API
-      await sendViaTelegramBot(message, videoBlob, type);
+      await sendViaTelegramBot(message, videoBlob);
       
     } catch (error) {
       console.error('Ошибка отправки через Telegram Bot API:', error);
@@ -99,7 +99,7 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
   };
 
   // Отправка через Telegram Bot API
-  const sendViaTelegramBot = async (message: string, video: Blob, type: 'запись' | 'задача' | 'брак') => {
+  const sendViaTelegramBot = async (message: string, video: Blob) => {
     // Показываем статус отправки
     console.log('🚀 Отправляем видео в Telegram...', {
       videoSize: video.size,
@@ -144,15 +144,8 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
         type: videoBlob.type
       });
       
-      // Токены для разных типов отправки
-      let BOT_TOKEN: string;
-      if (type === 'запись') {
-        BOT_TOKEN = '8286818285:AAGqkSsTlsbKCT1guKYoDpkL_OcldAVyuSE';
-      } else if (type === 'брак') {
-        BOT_TOKEN = '8244106990:AAEVuBsj6sQDJ-a-qfwFRk0GMRHbyrGVuWc';
-      } else {
-        BOT_TOKEN = '8244106990:AAEVuBsj6sQDJ-a-qfwFRk0GMRHbyrGVuWc';
-      }
+      // Реальные данные бота
+      const BOT_TOKEN = '8286818285:AAGqkSsTlsbKCT1guKYoDpkL_OcldAVyuSE';
       
       const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
         method: 'POST',
@@ -257,64 +250,24 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
         
         <h1 className="text-2xl font-bold">IMPERIA PROMO</h1>
 
-        <div className="space-y-4">
-          <Button 
-            onClick={() => sendToTelegram('запись')}
-            disabled={isSending}
-            size="lg"
-            className="w-full text-lg px-8 py-6 h-auto bg-green-600 hover:bg-green-700"
-          >
-            {isSending ? (
-              <>
-                <Icon name="Loader2" size={20} className="mr-2 animate-spin" />
-                Отправляем...
-              </>
-            ) : (
-              <>
-                <Icon name="CheckCircle" size={20} className="mr-2" />
-                Запись
-              </>
-            )}
-          </Button>
-
-          <Button 
-            onClick={() => sendToTelegram('задача')}
-            disabled={isSending}
-            size="lg"
-            className="w-full text-lg px-8 py-6 h-auto bg-red-600 hover:bg-red-700"
-          >
-            {isSending ? (
-              <>
-                <Icon name="Loader2" size={20} className="mr-2 animate-spin" />
-                Отправляем...
-              </>
-            ) : (
-              <>
-                <Icon name="AlertCircle" size={20} className="mr-2" />
-                Задача
-              </>
-            )}
-          </Button>
-
-          <Button 
-            onClick={() => sendToTelegram('брак')}
-            disabled={isSending}
-            size="lg"
-            className="w-full text-lg px-8 py-6 h-auto bg-orange-600 hover:bg-orange-700"
-          >
-            {isSending ? (
-              <>
-                <Icon name="Loader2" size={20} className="mr-2 animate-spin" />
-                Отправляем...
-              </>
-            ) : (
-              <>
-                <Icon name="XCircle" size={20} className="mr-2" />
-                Брак
-              </>
-            )}
-          </Button>
-        </div>
+        <Button 
+          onClick={sendToTelegram}
+          disabled={isSending}
+          size="lg"
+          className="w-full text-lg px-8 py-6 h-auto"
+        >
+          {isSending ? (
+            <>
+              <Icon name="Loader2" size={20} className="mr-2 animate-spin" />
+              Отправляем...
+            </>
+          ) : (
+            <>
+              <Icon name="Send" size={20} className="mr-2" />
+              Отправить в Telegram
+            </>
+          )}
+        </Button>
 
       </div>
     </div>
