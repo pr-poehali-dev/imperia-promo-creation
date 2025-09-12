@@ -63,12 +63,15 @@ const SendPage = ({ formData, videoBlob, onBack, onComplete }: SendPageProps) =>
     );
   }, []);
 
-  const sendToTelegram = async () => {
+  const sendToTelegram = async (type: 'запись' | 'брак') => {
     if (isSending) return; // Предотвращаем двойную отправку
     
     setIsSending(true);
     
-    const message = `🎯 НОВЫЙ ЛИД - IMPERIA PROMO
+    const statusIcon = type === 'запись' ? '✅' : '❌';
+    const statusText = type === 'запись' ? 'ЗАПИСЬ' : 'БРАК';
+    
+    const message = `${statusIcon} ${statusText} - IMPERIA PROMO
 
 👨‍👩‍👧‍👦 ДАННЫЕ УЧАСТНИКА:
 • Родитель: ${formData.parentName}
@@ -160,7 +163,7 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
       }
 
       console.log('Успешная отправка:', result);
-      alert('✅ Видео успешно отправлено в Telegram!\n\n🎯 IMPERIA PROMO - Лид зарегистрирован');
+      alert('✅ Видео успешно отправлено в Telegram!\n\n🎯 IMPERIA PROMO - Данные отправлены');
       
       // Автоматический переход на главную страницу
       setTimeout(() => {
@@ -250,24 +253,46 @@ ${location ? `• Координаты: ${location.latitude.toFixed(6)}, ${locat
         
         <h1 className="text-2xl font-bold">IMPERIA PROMO</h1>
 
-        <Button 
-          onClick={sendToTelegram}
-          disabled={isSending}
-          size="lg"
-          className="w-full text-lg px-8 py-6 h-auto"
-        >
-          {isSending ? (
-            <>
-              <Icon name="Loader2" size={20} className="mr-2 animate-spin" />
-              Отправляем...
-            </>
-          ) : (
-            <>
-              <Icon name="Send" size={20} className="mr-2" />
-              Отправить в Telegram
-            </>
-          )}
-        </Button>
+        <div className="space-y-4 w-full">
+          <Button 
+            onClick={() => sendToTelegram('запись')}
+            disabled={isSending}
+            size="lg"
+            className="w-full text-lg px-8 py-6 h-auto bg-green-600 hover:bg-green-700"
+          >
+            {isSending ? (
+              <>
+                <Icon name="Loader2" size={20} className="mr-2 animate-spin" />
+                Отправляем...
+              </>
+            ) : (
+              <>
+                <Icon name="CheckCircle" size={20} className="mr-2" />
+                Запись
+              </>
+            )}
+          </Button>
+
+          <Button 
+            onClick={() => sendToTelegram('брак')}
+            disabled={isSending}
+            size="lg"
+            variant="destructive"
+            className="w-full text-lg px-8 py-6 h-auto"
+          >
+            {isSending ? (
+              <>
+                <Icon name="Loader2" size={20} className="mr-2 animate-spin" />
+                Отправляем...
+              </>
+            ) : (
+              <>
+                <Icon name="XCircle" size={20} className="mr-2" />
+                Брак
+              </>
+            )}
+          </Button>
+        </div>
 
       </div>
     </div>
