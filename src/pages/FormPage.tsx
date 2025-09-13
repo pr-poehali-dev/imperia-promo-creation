@@ -38,78 +38,30 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
 
   const startRecording = async () => {
     try {
-      // Оптимизированные настройки для iOS без PiP эффекта
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      
-      const constraints = {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 640, min: 320, max: 640 },
-          height: { ideal: 360, min: 240, max: 360 },
-          frameRate: { ideal: 30, min: 15, max: 30 },
-          facingMode: 'environment',
-          // Особые настройки для iOS
-          ...(isIOS && {
-            aspectRatio: { ideal: 16/9 }, // 16:9 для iOS
-            resizeMode: 'crop-and-scale'
-          })
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: { exact: 'environment' }
         },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 44100
-        }
-      };
-      
-      console.log('Запрашиваем камеру с настройками:', constraints);
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        audio: true
+      });
 
       setStream(mediaStream);
       if (videoRef.current) {
-        const video = videoRef.current;
-        video.srcObject = mediaStream;
-        
-        // Отключаем Picture-in-Picture и другие iOS эффекты
-        video.setAttribute('playsinline', 'true');
-        video.setAttribute('webkit-playsinline', 'true');
-        video.muted = true;
-        video.autoplay = true;
-        
-        // Отключаем PiP режим
-        if ('disablePictureInPicture' in video) {
-          (video as any).disablePictureInPicture = true;
-        }
+        videoRef.current.srcObject = mediaStream;
       }
 
-      // Оптимизированный выбор формата для iOS и Telegram
-      let mimeType = '';
-      
-      // Проверяем поддерживаемые форматы в порядке приоритета для Telegram
-      const supportedTypes = [
-        'video/mp4; codecs="avc1.424028, mp4a.40.2"', // H.264 + AAC - лучший для Telegram
-        'video/webm; codecs="vp9, opus"',              // VP9 + Opus  
-        'video/webm; codecs="vp8, opus"',              // VP8 + Opus
-        'video/mp4',                                    // Базовый MP4
-        'video/webm'                                    // Базовый WebM
-      ];
-      
-      for (const type of supportedTypes) {
-        if (MediaRecorder.isTypeSupported(type)) {
-          mimeType = type;
-          break;
-        }
+      // Попробуем использовать MP4, если поддерживается
+      let mimeType = 'video/mp4';
+      if (!MediaRecorder.isTypeSupported('video/mp4')) {
+        // Fallback к WebM если MP4 не поддерживается
+        mimeType = 'video/webm;codecs=vp8,opus';
+        console.warn('MP4 не поддерживается, используем WebM');
       }
-      
-      if (!mimeType) {
-        mimeType = 'video/webm'; // последний fallback
-      }
-      
-      console.log('Используемый MIME тип:', mimeType);
       
       const mediaRecorder = new MediaRecorder(mediaStream, {
-        mimeType: mimeType,
-        videoBitsPerSecond: 2500000, // 2.5 Mbps - оптимально для Telegram
-        audioBitsPerSecond: 128000   // 128 kbps - хорошее качество звука
+        mimeType: mimeType
       });
 
       mediaRecorderRef.current = mediaRecorder;
@@ -122,15 +74,8 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
       };
 
       mediaRecorder.onstop = () => {
-        const recordedMimeType = mediaRecorder.mimeType || mimeType;
-        const blob = new Blob(chunksRef.current, { type: recordedMimeType });
-        
-        console.log('Записанное видео:', {
-          size: blob.size,
-          type: blob.type,
-          duration: 'неизвестно'
-        });
-        
+        const mimeType = mediaRecorder.mimeType || 'video/mp4';
+        const blob = new Blob(chunksRef.current, { type: mimeType });
         setVideoBlob(blob);
         setVideoUrl(URL.createObjectURL(blob));
         
@@ -138,8 +83,7 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
         setStream(null);
       };
 
-      // Начинаем запись с интервалом для лучшей совместимости
-      mediaRecorder.start(1000); // записываем чанки каждую секунду
+      mediaRecorder.start();
       setIsRecording(true);
     } catch (error) {
       console.error('Ошибка начала записи:', error);
@@ -284,7 +228,7 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
             <CardHeader className="bg-muted/30">
               <CardTitle className="flex items-center gap-2">
                 <Icon name="Video" size={24} />
-                Запись видео (360p)
+                Запись видео (480p)
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -296,13 +240,7 @@ const FormPage = ({ onNext, onBack }: FormPageProps) => {
                       autoPlay
                       muted
                       playsInline
-                      webkit-playsinline="true"
-                      disablePictureInPicture
-                      controlsList="nodownload nofullscreen noremoteplayback"
                       className="w-full h-full object-cover"
-                      style={{
-                        objectFit: 'cover' // убираем отзеркаливание
-                      }}
                     />
                   ) : (
                     <video
